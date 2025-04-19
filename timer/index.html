@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DLG Contest Timer</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; }
+    h1 { text-align: center; }
+    .timer { font-size: 3rem; text-align: center; margin: 10px 0; }
+    button { margin: 0 5px 10px; padding: 8px 12px; font-size: 1rem; }
+    select { font-size: 1rem; padding: 5px; }
+    .section { border: 1px solid #ccc; border-radius: 8px; padding: 10px; margin-bottom: 20px; }
+    #flightLog { list-style: none; padding-left: 0; }
+    #flightLog li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <h1>DLG Contest Timer</h1>
+
+  <div class="section">
+    <label for="task">Task:</label>
+    <select id="task">
+      <option value="A">A – Last flight (Max 5:00)</option>
+      <option value="B">B – Next‑to‑last & last (Max 4:00)</option>
+      <option value="C">C – All up, last down (Max 3:00)</option>
+      <option value="D">D – Small Ladder (30→120s)</option>
+      <option value="E">E – Poker (variable)</option>
+      <option value="F">F – 3 of 6 (Max 3:00)</option>
+      <option value="G">G – Five longest (Max 2:00)</option>
+      <option value="H">H – 1,2,3,4 min targets</option>
+      <option value="I">I – Three longest (Max 3:20)</option>
+      <option value="J">J – Three last (Max 3:00)</option>
+      <option value="K">K – Big Ladder (60→180s)</option>
+    </select>
+  </div>
+
+  <div class="section">
+    <h2>Working Time</h2>
+    <div id="workingTimer" class="timer">10:00</div>
+    <button id="startWorking">Start</button>
+    <button id="resetWorking">Reset</button>
+  </div>
+
+  <div class="section">
+    <h2>Flight Timer</h2>
+    <div id="flightTimer" class="timer">0:00</div>
+    <button id="toggleFlight">Start Flight</button>
+    <h3>Flights Log</h3>
+    <ul id="flightLog"></ul>
+  </div>
+
+  <script>
+    // --- Task settings ---
+    const taskSettings = {
+      A: { work: 600, max: 300 },
+      B: { work: 600, max: 240 },
+      C: { work: 600, max: 180 },
+      D: { work: 600, max: 120 },
+      E: { work: 600, max: null },
+      F: { work: 600, max: 180 },
+      G: { work: 600, max: 120 },
+      H: { work: 600, max: 240 },
+      I: { work: 600, max: 200 },
+      J: { work: 600, max: 180 },
+      K: { work: 600, max: 180 },
+    };
+
+    // --- Helpers ---
+    function formatTime(s) {
+      const m = Math.floor(s/60), sec = s % 60;
+      return String(m).padStart(1,' ')+':'+String(sec).padStart(2,'0');
+    }
+
+    // --- Working Timer ---
+    let workInterval, workRemaining;
+    const workDisplay = document.getElementById('workingTimer');
+    const startW = document.getElementById('startWorking');
+    const resetW = document.getElementById('resetWorking');
+    function resetWorking() {
+      clearInterval(workInterval);
+      workRemaining = taskSettings[task.value].work;
+      workDisplay.textContent = formatTime(workRemaining);
+    }
+    function startWorking() {
+      clearInterval(workInterval);
+      workInterval = setInterval(()=>{
+        if (workRemaining>0) {
+          workRemaining--;
+          workDisplay.textContent = formatTime(workRemaining);
+        } else {
+          clearInterval(workInterval);
+          alert("⏰ Working time’s up!");
+        }
+      }, 1000);
+    }
+    startW.onclick = startWorking;
+    resetW.onclick = resetWorking;
+
+    // --- Flight Timer + Logging ---
+    let flightInterval, flightElapsed = 0, flightRunning = false;
+    const flightDisplay = document.getElementById('flightTimer');
+    const toggleBtn = document.getElementById('toggleFlight');
+    const logList = document.getElementById('flightLog');
+
+    toggleBtn.onclick = () => {
+      if (!flightRunning) {
+        // start flight
+        flightRunning = true;
+        toggleBtn.textContent = 'Stop Flight';
+        // if working timer not started, kick it off
+        if (!workInterval) startWorking();
+        flightInterval = setInterval(()=>{
+          flightElapsed++;
+          flightDisplay.textContent = formatTime(flightElapsed);
+          const max = taskSettings[task.value].max;
+          if (max!==null && flightElapsed > max)
+            flightDisplay.style.color = 'crimson';
+        }, 1000);
+      } else {
+        // stop flight
+        flightRunning = false;
+        clearInterval(flightInterval);
+        toggleBtn.textContent = 'Start Flight';
+        // log it
+        const li = document.createElement('li');
+        li.textContent = formatTime(flightElapsed);
+        logList.appendChild(li);
+        // reset flight display
+        flightElapsed = 0;
+        flightDisplay.textContent = '0:00';
+        flightDisplay.style.color = 'black';
+      }
+    };
+
+    // --- Task change handler ---
+    const task = document.getElementById('task');
+    task.addEventListener('change', ()=>{
+      // reset both clocks and clear log
+      resetWorking();
+      clearInterval(flightInterval);
+      flightElapsed = 0;
+      flightDisplay.textContent = '0:00';
+      flightDisplay.style.color = 'black';
+      flightRunning = false;
+      toggleBtn.textContent = 'Start Flight';
+      logList.innerHTML = '';
+      workInterval = null;
+    });
+
+    // init
+    resetWorking();
+  </script>
+</body>
+</html>
+
